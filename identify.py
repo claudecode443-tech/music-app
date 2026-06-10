@@ -19,7 +19,7 @@ def identify_piece(audio_path, api_key):
     else:
         print("\nCould not identify piece")
 
-api_key = "325c5724964620fc81ee7a56ba971908"
+api_key = ""
 audio_path = r"C:\Users\finla\Downloads\Cantata ''Jesu, der du meine Seele'', BWV. 78 - 2. Wir eilen mit schwachen (1).mp3"
 identify_piece(audio_path, api_key)
 

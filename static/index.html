@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PartIsolator — Classical Music Part Isolation</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#6c63ff">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #18181c;
+    --surface2: #22222a;
+    --border: #2e2e38;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --accent: #6c63ff;
+    --accent-hover: #8078ff;
+    --success: #34d399;
+    --error: #f87171;
+    --warn: #fbbf24;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  [data-theme="light"] {
+    --bg: #f4f4f8;
+    --surface: #ffffff;
+    --surface2: #f0f0f6;
+    --border: #dadadf;
+    --text: #111118;
+    --text2: #5a5a70;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .theme-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .theme-btn:hover { background: var(--border); }
+
+  /* ── Main layout ── */
+  main {
+    max-width: 960px;
+    margin: 48px auto;
+    padding: 0 24px;
+  }
+  .hero { text-align: center; margin-bottom: 48px; }
+  .hero h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+  .hero p { font-size: 1.1rem; color: var(--text2); max-width: 520px; margin: 0 auto; }
+
+  /* ── Upload card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  .dropzone.has-file { border-color: var(--success); border-style: solid; }
+  .dropzone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .dropzone-icon { font-size: 2rem; margin-bottom: 8px; }
+  .dropzone-label { font-weight: 600; font-size: 0.95rem; }
+  .dropzone-hint { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+  .dropzone-filename {
+    font-size: 0.82rem; color: var(--success); margin-top: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* ── Part selector ── */
+  .part-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+  .part-row label { font-weight: 600; font-size: 0.9rem; color: var(--text2); margin-bottom: 6px; display: block; }
+  .part-row > div { flex: 1; }
+  select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 0.95rem;
+    appearance: none;
+    cursor: pointer;
+  }
+  select:disabled { opacity: 0.5; cursor: not-allowed; }
+  select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ── Primary button ── */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── Progress ── */
+  #progress-area { margin-top: 28px; }
+  .progress-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+  .progress-msg { font-size: 0.88rem; color: var(--text2); }
+
+  /* ── Error banner ── */
+  #error-banner {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--error) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--error) 40%, transparent);
+    border-radius: 8px;
+    color: var(--error);
+    font-size: 0.9rem;
+    display: none;
+  }
+
+  /* ── Result ── */
+  #result-area { margin-top: 28px; text-align: center; display: none; }
+  #result-area h3 { font-size: 1.2rem; margin-bottom: 16px; }
+  .btn-download {
+    display: inline-block;
+    padding: 14px 32px;
+    background: var(--success);
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: 10px;
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: opacity 0.2s;
+  }
+  .btn-download:hover { opacity: 0.85; }
+  .btn-secondary {
+    display: block;
+    margin: 0 auto;
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── Steps ── */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin: 48px 0 40px;
+    counter-reset: step;
+  }
+  .step {
+    flex: 1;
+    text-align: center;
+    padding: 0 12px;
+    position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 20px;
+    right: -4px;
+    width: calc(100% - 40px);
+    height: 2px;
+    background: var(--border);
+    left: calc(50% + 20px);
+  }
+  .step-num {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    margin: 0 auto 10px;
+    font-size: 0.95rem;
+  }
+  .step-title { font-weight: 600; font-size: 0.9rem; }
+  .step-desc { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+
+  /* ── Pricing ── */
+  .pricing-section { margin-top: 80px; }
+  .pricing-section h2 { text-align: center; font-size: 1.8rem; margin-bottom: 8px; }
+  .pricing-section p { text-align: center; color: var(--text2); margin-bottom: 40px; }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 640px) { .pricing-grid { grid-template-columns: 1fr; } }
+  .plan {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+  }
+  .plan.featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    position: relative;
+  }
+  .plan-badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 3px 12px; border-radius: 99px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .plan-name { font-size: 1rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .plan-price { font-size: 2.2rem; font-weight: 800; margin-bottom: 4px; }
+  .plan-period { font-size: 0.85rem; color: var(--text2); margin-bottom: 20px; }
+  .plan-features { list-style: none; margin-bottom: 24px; }
+  .plan-features li { font-size: 0.9rem; padding: 5px 0; color: var(--text2); }
+  .plan-features li::before { content: "✓ "; color: var(--success); font-weight: 700; }
+  .btn-plan {
+    width: 100%; padding: 11px;
+    border-radius: 8px; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text);
+    transition: background 0.2s;
+  }
+  .btn-plan:hover { background: var(--border); }
+  .btn-plan.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-plan.accent:hover { background: var(--accent-hover); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 12px 24px; border-radius: 8px; font-size: 0.9rem;
+    box-shadow: var(--shadow); display: none; z-index: 100;
+  }
+
+  footer {
+    text-align: center; padding: 40px 24px;
+    font-size: 0.82rem; color: var(--text2);
+    border-top: 1px solid var(--border);
+    margin-top: 80px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Part<span>Isolator</span></div>
+  <button class="theme-btn" id="theme-btn" aria-label="Toggle theme">☀️</button>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Isolate your voice from any recording</h1>
+    <p>Upload a classical recording and sheet music score — we'll extract just your part using score-informed AI separation.</p>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Upload Recording</div>
+      <div class="step-desc">MP3, WAV or FLAC</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Upload Score</div>
+      <div class="step-desc">MusicXML (.xml / .mxl)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Select Your Part</div>
+      <div class="step-desc">Soprano, Alto, Tenor, Bass…</div>
+    </div>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="upload-grid">
+      <!-- Audio drop zone -->
+      <div class="dropzone" id="audio-drop">
+        <input type="file" id="audio-input" accept=".mp3,.wav,.flac,.m4a" aria-label="Upload audio">
+        <div class="dropzone-icon">🎵</div>
+        <div class="dropzone-label">Drop audio here</div>
+        <div class="dropzone-hint">MP3, WAV, FLAC, M4A · max 50 MB</div>
+        <div class="dropzone-filename" id="audio-filename"></div>
+      </div>
+
+      <!-- Score drop zone -->
+      <div class="dropzone" id="score-drop">
+        <input type="file" id="score-input" accept=".xml,.mxl,.musicxml" aria-label="Upload score">
+        <div class="dropzone-icon">🎼</div>
+        <div class="dropzone-label">Drop score here</div>
+        <div class="dropzone-hint">MusicXML (.xml / .mxl) · max 10 MB</div>
+        <div class="dropzone-filename" id="score-filename"></div>
+      </div>
+    </div>
+
+    <!-- Part selector -->
+    <div class="part-row">
+      <div>
+        <label for="part-select">Your part</label>
+        <select id="part-select" disabled>
+          <option value="">Upload score to detect parts…</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Isolate button -->
+    <button class="btn-primary" id="isolate-btn" disabled>Isolate My Part →</button>
+
+    <!-- Progress -->
+    <div id="progress-area" style="display:none">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-msg" id="progress-msg">Starting…</div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-banner"></div>
+
+    <!-- Result -->
+    <div id="result-area">
+      <h3>Your isolated part is ready 🎉</h3>
+      <a class="btn-download" id="download-link" download="isolated_part.wav">⬇ Download WAV</a>
+      <button class="btn-secondary" id="new-job-btn">Isolate Another Part</button>
+    </div>
+  </div>
+
+  <!-- Pricing -->
+  <div class="pricing-section">
+    <h2>Simple pricing</h2>
+    <p>Start for free. Upgrade when you need more.</p>
+    <div class="pricing-grid">
+
+      <div class="plan">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">£0</div>
+        <div class="plan-period">forever</div>
+        <ul class="plan-features">
+          <li>3 isolations per month</li>
+          <li>MP3 &amp; MusicXML upload</li>
+          <li>WAV download</li>
+        </ul>
+        <button class="btn-plan" onclick="showToast('You\'re already on the free plan!')">Current plan</button>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">Most Popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">£7.99</div>
+        <div class="plan-period">per month</div>
+        <ul class="plan-features">
+          <li>Unlimited isolations</li>
+          <li>Priority processing</li>
+          <li>PDF score support (coming soon)</li>
+          <li>Email support</li>
+        </ul>
+        <button class="btn-plan accent" onclick="showToast('Pro subscriptions coming soon — join the waitlist at hello@partisolator.com')">Get Pro</button>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Institutional</div>
+        <div class="plan-price">Custom</div>
+        <div class="plan-period">per year</div>
+        <ul class="plan-features">
+          <li>Schools &amp; orchestras</li>
+          <li>Bulk processing API</li>
+          <li>On-premise option</li>
+          <li>Dedicated support</li>
+        </ul>
+        <button class="btn-plan" onclick="showToast('Contact us at hello@partisolator.com')">Contact Us</button>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2024 PartIsolator · Score-informed music separation ·
+  <a href="https://arxiv.org/abs/2503.07352" target="_blank" rel="noopener" style="color:var(--accent)">Research</a>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  // ── Theme toggle ──
+  const themeBtn = document.getElementById('theme-btn');
+  const html = document.documentElement;
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  html.dataset.theme = savedTheme;
+  themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+  themeBtn.addEventListener('click', () => {
+    const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('theme', next);
+  });
+
+  // ── DOM refs ──
+  const audioInput  = document.getElementById('audio-input');
+  const scoreInput  = document.getElementById('score-input');
+  const audioDrop   = document.getElementById('audio-drop');
+  const scoreDrop   = document.getElementById('score-drop');
+  const audioFname  = document.getElementById('audio-filename');
+  const scoreFname  = document.getElementById('score-filename');
+  const partSelect  = document.getElementById('part-select');
+  const isolateBtn  = document.getElementById('isolate-btn');
+  const progressArea = document.getElementById('progress-area');
+  const progressFill = document.getElementById('progress-fill');
+  const progressMsg  = document.getElementById('progress-msg');
+  const errorBanner  = document.getElementById('error-banner');
+  const resultArea   = document.getElementById('result-area');
+  const downloadLink = document.getElementById('download-link');
+  const newJobBtn    = document.getElementById('new-job-btn');
+
+  // ── Drag-and-drop helpers ──
+  function setupDropzone(zone, input, fnameEl, onFile) {
+    zone.addEventListener('dragenter', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragover',  e => { e.preventDefault(); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      // Inject the file into the input element
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change'));
+    });
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) return;
+      fnameEl.textContent = file.name;
+      zone.classList.add('has-file');
+      onFile(file);
+    });
+  }
+
+  setupDropzone(audioDrop, audioInput, audioFname, () => maybeEnable());
+
+  setupDropzone(scoreDrop, scoreInput, scoreFname, async (file) => {
+    // Auto-populate parts dropdown
+    partSelect.disabled = true;
+    partSelect.innerHTML = '<option>Loading parts…</option>';
+    const fd = new FormData();
+    fd.append('score', file);
+    try {
+      const resp = await fetch('/parts', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || data.error || 'Could not parse score');
+      partSelect.innerHTML = data.parts.map(p => `<option value="${p}">${p}</option>`).join('');
+      partSelect.disabled = false;
+    } catch (err) {
+      partSelect.innerHTML = '<option>Could not read parts</option>';
+      showError(err.message);
+    }
+    maybeEnable();
+  });
+
+  function maybeEnable() {
+    const ready = audioInput.files.length > 0 &&
+                  scoreInput.files.length > 0 &&
+                  !partSelect.disabled;
+    isolateBtn.disabled = !ready;
+  }
+
+  partSelect.addEventListener('change', maybeEnable);
+
+  // ── Isolate ──
+  let pollInterval = null;
+
+  isolateBtn.addEventListener('click', async () => {
+    hideError();
+    resultArea.style.display = 'none';
+    showProgress(0, 'Uploading files…');
+    isolateBtn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('audio',     audioInput.files[0]);
+    fd.append('score',     scoreInput.files[0]);
+    fd.append('part_name', partSelect.value);
+
+    let jobId;
+    try {
+      const resp = await fetch('/isolate', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || data.error || 'Upload failed');
+      jobId = data.job_id;
+    } catch (err) {
+      showError(err.message);
+      hideProgress();
+      isolateBtn.disabled = false;
+      return;
+    }
+
+    // Poll for status
+    pollInterval = setInterval(async () => {
+      try {
+        const resp = await fetch(`/status/${jobId}`);
+        const s    = await resp.json();
+        showProgress(s.pct, s.msg);
+
+        if (s.status === 'done') {
+          clearInterval(pollInterval);
+          hideProgress();
+          showResult(`/download/${jobId}`);
+        } else if (s.status === 'error') {
+          clearInterval(pollInterval);
+          hideProgress();
+          showError(s.error || 'Processing failed');
+          isolateBtn.disabled = false;
+        }
+      } catch (_) { /* network hiccup — keep polling */ }
+    }, 2000);
+  });
+
+  newJobBtn.addEventListener('click', () => {
+    resultArea.style.display = 'none';
+    hideError();
+    // Reset file inputs
+    audioInput.value = ''; audioFname.textContent = ''; audioDrop.classList.remove('has-file');
+    scoreInput.value = ''; scoreFname.textContent = ''; scoreDrop.classList.remove('has-file');
+    partSelect.innerHTML = '<option value="">Upload score to detect parts…</option>';
+    partSelect.disabled = true;
+    isolateBtn.disabled = true;
+  });
+
+  // ── UI helpers ──
+  function showProgress(pct, msg) {
+    progressArea.style.display = 'block';
+    progressFill.style.width = pct + '%';
+    progressMsg.textContent = msg;
+  }
+  function hideProgress() { progressArea.style.display = 'none'; }
+
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.style.display = 'block';
+  }
+  function hideError() { errorBanner.style.display = 'none'; }
+
+  function showResult(url) {
+    downloadLink.href = url;
+    resultArea.style.display = 'block';
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  // ── PWA service worker ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
