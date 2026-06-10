@@ -15,7 +15,7 @@ def home():
         <p>Upload audio file (MP3):</p>
         <input type="file" name="audio" accept=".mp3"><br><br>
         <p>Upload score file (MusicXML):</p>
-        <input type="file" name="score" accept=".xml,.musicxml"><br><br>
+        <input type="file" name="score" accept=".xml,.musicxml,.mxl1"><br><br>
         <p>Select voice part:</p>
         <select name="part">
             <option value="0">Soprano</option>
@@ -34,7 +34,7 @@ def isolate():
     part_index = int(request.form['part'])
 
     audio_path = 'uploaded_audio.mp3'
-    score_path = 'uploaded_score.xml'
+    score_path = 'uploaded_score.mxl'
     audio_file.save(audio_path)
     score_file.save(score_path)
 
